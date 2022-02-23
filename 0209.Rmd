@@ -1,0 +1,137 @@
+---
+title: "Admission"
+author: "Sammy"
+date: "2/9/2022"
+output: html_document
+---
+ 
+```{r}
+setwd('~/Downloads')
+data<-read.csv('admission.csv')
+data2<-read.csv('admission2.csv')
+#Assumption: admission1's perf is taken in the beginning of the course, admission2's on the last day of the course. 
+summary(data)
+```
+
+```{r}
+y = data2$perf - data$perf
+data3<-cbind(data,y)
+colnames(data3)[11]<-'impr'
+```
+
+
+```{r}
+#dependent variable normality check 
+boxplot(data3$impr)
+hist(data3$impr)
+
+```
+
+```{r}
+#get rid of outliers
+UpperQ = fivenum(data3$impr)[4]
+LowerQ = fivenum(data3$impr)[2]
+IQR = UpperQ - LowerQ
+
+upperOutlier = data3$impr[ which( data3$impr > UpperQ+IQR*1.5) ]
+lowerOutlier =data3$impr[ which( data3$impr < LowerQ-IQR*1.5) ]
+
+data3$impr <- ifelse(data3$impr <=-17 | data3$impr >=17,NA,data3$impr)
+data4<-data3 %>% filter(!is.na(impr))
+
+write.csv(
+  data4,              
+  file="admission4",    
+  row.names=TRUE  
+)
+
+```
+
+
+```{r}
+
+plot(data4$age, data4$impr, col ="red", cex =0.5,xlab = 'Age', ylab = 'Improvement')
+plot(data4$IAT, data4$impr, col ="orange", cex =0.5,xlab = 'IAT', ylab = 'Improvement')
+plot(data4$HPC, data4$impr, col ="aquamarine4", cex =0.5,xlab = 'Test result', ylab = 'Improvement')
+plot(data4$self, data4$impr, col ="#00B3FFFF", cex =0.5,xlab = 'Essay', ylab = 'Improvement')
+
+```
+```{r}
+model_normal = lm(perf ~ HPC + self + factor(major) + factor(work), data = data)
+summary(model_normal)
+
+model_imp = lm(impr ~ HPC + self + factor(major) + factor(work)+IAT +age + factor(edu), data = data4)
+summary(model_imp)
+```
+```{r}
+#In model_lowest, people with HPC<= 6
+library(dplyr)
+data_lowest<-data4 %>% filter(HPC %in% c(5,6))
+model_lowest = lm(impr ~ self + factor(work) + factor(major) + age + 
+    IAT, data = data_lowest)
+summary(model_lowest)
+```
+```{r}
+#compare UnivO and Univ
+data_Uni<-data4 %>% filter(edu %in% c('Univ','UnivO'))
+model_uni<-lm(impr ~ HPC + self + factor(major) + factor(work)+IAT +age + factor(edu), data = data_Uni)
+summary(model_uni)
+```
+```{r}
+#compare GradO and Grae
+data_gra<-data4 %>% filter(edu %in% c('Grad','GradO'))
+model_gra<-lm(impr ~ HPC + self + factor(major) + factor(work)+IAT +age + factor(edu), data = data_gra)
+summary(model_gra)
+```
+
+```{r}
+#compare educational level
+data_edu<-data4 %>% filter(edu %in% c('Grad','Univ','High'))
+model_edu<-lm(impr ~ HPC + self + factor(major) + factor(work)+IAT +age + factor(edu), data = data_edu)
+summary(model_edu)
+```
+
+
+```{r}
+#accuracy check 
+anova(model_normal)
+anova(model_imp)
+anova(model_lowest)
+```
+
+
+
+#check normality of residuals
+```{r}
+res_normal<-resid(model_normal)
+qqnorm(res_normal)
+
+res_impr<-resid(model_imp)
+qqnorm(res_impr)
+
+res_low<-resid(model_lowest)
+qqnorm(res_low)
+```
+
+#residual plots to check heteroscadasticity 
+```{r}
+plot(res_normal)
+plot(res_impr)
+plot(res_low)
+```
+
+#correlation 
+```{r}
+cor(data$HPC, data$self)
+cor(data$HPC, data$work)
+#plot(,c(data$HPC,data$work,data$major,data$self))
+plot(data)
+plot(data4)
+#cor1<-cor(data[,c(7,8)], use="pairwise", method="spearman")
+#library(corrplot)
+#corrplot(cor1)
+```
+
+
+
+
